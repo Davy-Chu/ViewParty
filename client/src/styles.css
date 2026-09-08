@@ -101,6 +101,22 @@ button:hover {
   background: #493ead;
 }
 
+.back-button {
+  display: inline-block;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #cbd2df;
+  border-radius: 0.55rem;
+  color: #474078;
+  background: #ffffff;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.back-button:hover {
+  border-color: #5b50c6;
+  background: #f0efff;
+}
+
 .notice {
   margin: 1.25rem 0 0;
   padding: 0.85rem 1rem;
@@ -109,15 +125,29 @@ button:hover {
   background: #f0efff;
 }
 
-.video-placeholder {
+.video-player {
   aspect-ratio: 16 / 9;
   display: grid;
   place-items: center;
   margin: 1.5rem 0;
+  overflow: hidden;
   border-radius: 0.75rem;
-  color: #ccd2df;
-  background: #1d2330;
-  font-weight: 650;
+  background: #000000;
+}
+
+.page-status {
+  margin: 0;
+  color: #4a556d;
+  font-weight: 600;
+}
+
+.error {
+  color: #b42318;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .participants {
