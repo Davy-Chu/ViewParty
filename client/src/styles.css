@@ -101,6 +101,43 @@ button:hover {
   background: #493ead;
 }
 
+.home-panel {
+  text-align: center;
+}
+
+.home-actions {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.primary-link,
+.secondary-link {
+  padding: 0.85rem 1rem;
+  border-radius: 0.55rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.primary-link {
+  color: #ffffff;
+  background: #5b50c6;
+}
+
+.primary-link:hover {
+  background: #493ead;
+}
+
+.secondary-link {
+  border: 1px solid #cbd2df;
+  color: #474078;
+  background: #ffffff;
+}
+
+.secondary-link:hover {
+  border-color: #5b50c6;
+  background: #f0efff;
+}
+
 .back-button {
   display: inline-block;
   padding: 0.7rem 0.9rem;
@@ -117,6 +154,13 @@ button:hover {
   background: #f0efff;
 }
 
+.back-link {
+  display: inline-block;
+  margin-top: 1.25rem;
+  color: #5b50c6;
+  font-weight: 650;
+}
+
 .notice {
   margin: 1.25rem 0 0;
   padding: 0.85rem 1rem;
@@ -125,11 +169,31 @@ button:hover {
   background: #f0efff;
 }
 
+.room {
+  width: min(100%, 72rem);
+}
+
+.party-code {
+  color: #626b7d;
+}
+
+.party-code strong {
+  color: #172033;
+  letter-spacing: 0.12em;
+}
+
+.watch-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13rem;
+  gap: 1.5rem;
+  align-items: start;
+}
+
 .video-player {
   aspect-ratio: 16 / 9;
   display: grid;
   place-items: center;
-  margin: 1.5rem 0;
+  margin-bottom: 1rem;
   overflow: hidden;
   border-radius: 0.75rem;
   background: #000000;
@@ -156,13 +220,48 @@ button:disabled {
   border-radius: 0.75rem;
 }
 
-.participants h2 {
-  margin-bottom: 0.4rem;
+.participants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #dfe4ee;
+}
+
+.participants-header h2 {
+  margin-bottom: 0;
   font-size: 1rem;
 }
 
-.participants p {
-  margin-bottom: 0;
+.participants-header span {
   color: #626b7d;
+  font-weight: 700;
+}
+
+.participant-list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.participant-list li {
+  overflow-wrap: anywhere;
+}
+
+.creator-crown {
+  margin-right: 0.35rem;
+}
+
+.join-code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+@media (max-width: 700px) {
+  .watch-layout {
+    grid-template-columns: 1fr;
+  }
 }
 

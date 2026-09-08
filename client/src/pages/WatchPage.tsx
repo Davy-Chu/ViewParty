@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ReactPlayer from "react-player";
 import { Link, useParams } from "react-router-dom";
 import { getSession } from "../services/sessionApi";
+import { MAX_PARTICIPANTS } from "../types/Session";
 import type { Session } from "../types/Session";
 
 function WatchPage() {
@@ -52,14 +53,43 @@ function WatchPage() {
     <section className="panel room" aria-labelledby="room-heading">
       <p className="eyebrow">ViewParty</p>
       <h1 id="room-heading">{session.name}</h1>
+      <p className="party-code">
+        Party Code: <strong>{session.joinCode}</strong>
+      </p>
 
-      <div className="video-player">
-        <ReactPlayer src={session.videoUrl} controls width="100%" height="100%" />
+      <div className="watch-layout">
+        <div className="watch-main">
+          <div className="video-player">
+            <ReactPlayer src={session.videoUrl} controls width="100%" height="100%" />
+          </div>
+
+          <Link className="back-button" to="/">
+            Back to home
+          </Link>
+        </div>
+
+        <aside className="participants" aria-labelledby="participants-heading">
+          <div className="participants-header">
+            <h2 id="participants-heading">Party</h2>
+            <span>
+              {session.participants.length}/{MAX_PARTICIPANTS}
+            </span>
+          </div>
+
+          <ul className="participant-list">
+            {session.participants.map((participant) => (
+              <li key={participant.username}>
+                {participant.isCreator && (
+                  <span className="creator-crown" aria-label="Creator" title="Creator">
+                    {"\uD83D\uDC51"}
+                  </span>
+                )}
+                {participant.username}
+              </li>
+            ))}
+          </ul>
+        </aside>
       </div>
-
-      <Link className="back-button" to="/">
-        Back to home
-      </Link>
     </section>
   );
 }

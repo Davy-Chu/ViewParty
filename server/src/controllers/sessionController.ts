@@ -2,25 +2,64 @@ import type { Request, Response } from "express";
 import * as sessionService from "../services/sessionService.js";
 
 export function createSession(request: Request, response: Response) {
-  const { name, videoUrl } = request.body as {
+  const { username, name, videoUrl } = request.body as {
+    username?: unknown;
     name?: unknown;
     videoUrl?: unknown;
   };
 
   if (
+    typeof username !== "string" ||
+    username.trim() === "" ||
     typeof name !== "string" ||
     name.trim() === "" ||
     typeof videoUrl !== "string" ||
     videoUrl.trim() === ""
   ) {
     response.status(400).json({
-      error: "Session name and video URL are required.",
+      error: "Username, session name, and video URL are required.",
     });
     return;
   }
 
-  const session = sessionService.createSession(name.trim(), videoUrl.trim());
+  const session = sessionService.createSession(
+    username.trim(),
+    name.trim(),
+    videoUrl.trim(),
+  );
   response.status(201).json(session);
+}
+
+export function joinSession(request: Request, response: Response) {
+  const { username, joinCode } = request.body as {
+    username?: unknown;
+    joinCode?: unknown;
+  };
+
+  if (
+    typeof username !== "string" ||
+    username.trim() === "" ||
+    typeof joinCode !== "string" ||
+    joinCode.trim() === ""
+  ) {
+    response.status(400).json({ error: "Username and party code are required." });
+    return;
+  }
+
+  const result = sessionService.joinSession(username.trim(), joinCode.trim());
+
+  if ("error" in result) {
+    const errors = {
+      not_found: { status: 404, message: "Party not found." },
+      full: { status: 409, message: "Party is full." },
+      username_taken: { status: 409, message: "Username is already taken." },
+    } as const;
+    const error = errors[result.error];
+    response.status(error.status).json({ error: error.message });
+    return;
+  }
+
+  response.status(200).json(result.session);
 }
 
 export function getSession(request: Request, response: Response) {

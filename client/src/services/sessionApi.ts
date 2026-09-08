@@ -14,13 +14,31 @@ async function readError(response: Response): Promise<string> {
 }
 
 export async function createSession(
+  username: string,
   name: string,
   videoUrl: string,
 ): Promise<Session> {
   const response = await fetch("/api/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, videoUrl }),
+    body: JSON.stringify({ username, name, videoUrl }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+
+  return (await response.json()) as Session;
+}
+
+export async function joinSession(
+  username: string,
+  joinCode: string,
+): Promise<Session> {
+  const response = await fetch("/api/sessions/join", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, joinCode }),
   });
 
   if (!response.ok) {

@@ -1,13 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { createSession } from "../services/sessionApi";
+import { joinSession } from "../services/sessionApi";
 
-function CreatePage() {
+function JoinPage() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
-  const [name, setName] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
+  const [joinCode, setJoinCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -17,61 +16,58 @@ function CreatePage() {
     setIsLoading(true);
 
     try {
-      const session = await createSession(username, name, videoUrl);
+      const session = await joinSession(username, joinCode);
       navigate(`/watch/${session.id}`);
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Unable to create the session. Please try again.",
+          : "Unable to join the party. Please try again.",
       );
     } finally {
       setIsLoading(false);
     }
   }
 
+  function handleJoinCodeChange(value: string) {
+    setJoinCode(value.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 5));
+  }
+
   return (
-    <section className="panel" aria-labelledby="create-heading">
+    <section className="panel" aria-labelledby="join-heading">
       <p className="eyebrow">ViewParty</p>
-      <h1 id="create-heading">Create Party</h1>
-      <p className="intro">Choose your username, party name, and YouTube video.</p>
+      <h1 id="join-heading">Join Party</h1>
 
       <form onSubmit={handleSubmit}>
-        <label htmlFor="creator-username">Username</label>
+        <label htmlFor="join-username">Username</label>
         <input
-          id="creator-username"
+          id="join-username"
           name="username"
           type="text"
-          placeholder="David"
+          placeholder="Alice"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
           required
         />
 
-        <label htmlFor="session-name">Session name</label>
+        <label htmlFor="join-code">Party Code</label>
         <input
-          id="session-name"
-          name="sessionName"
+          id="join-code"
+          className="join-code-input"
+          name="joinCode"
           type="text"
-          placeholder="Friday movie night"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
-
-        <label htmlFor="video-url">YouTube URL</label>
-        <input
-          id="video-url"
-          name="videoUrl"
-          type="url"
-          placeholder="https://www.youtube.com/watch?v=..."
-          value={videoUrl}
-          onChange={(event) => setVideoUrl(event.target.value)}
+          placeholder="A7K2Q"
+          value={joinCode}
+          onChange={(event) => handleJoinCodeChange(event.target.value)}
+          maxLength={5}
+          minLength={5}
+          pattern="[A-Z0-9]{5}"
+          autoComplete="off"
           required
         />
 
         <button type="submit" disabled={isLoading}>
-          {isLoading ? "Creating..." : "Create Party"}
+          {isLoading ? "Joining..." : "Join Party"}
         </button>
       </form>
 
@@ -88,4 +84,4 @@ function CreatePage() {
   );
 }
 
-export default CreatePage;
+export default JoinPage;
