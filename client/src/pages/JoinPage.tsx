@@ -17,6 +17,10 @@ function JoinPage() {
 
     try {
       const session = await joinSession(username, joinCode);
+      sessionStorage.setItem(
+        `viewparty:${session.id}:username`,
+        username.trim(),
+      );
       navigate(`/watch/${session.id}`);
     } catch (caughtError) {
       setError(

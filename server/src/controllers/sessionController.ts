@@ -27,7 +27,7 @@ export function createSession(request: Request, response: Response) {
     name.trim(),
     videoUrl.trim(),
   );
-  response.status(201).json(session);
+  response.status(201).json(sessionService.toSessionMetadata(session));
 }
 
 export function joinSession(request: Request, response: Response) {
@@ -46,7 +46,7 @@ export function joinSession(request: Request, response: Response) {
     return;
   }
 
-  const result = sessionService.joinSession(username.trim(), joinCode.trim());
+  const result = sessionService.validateJoin(username.trim(), joinCode.trim());
 
   if ("error" in result) {
     const errors = {
@@ -59,7 +59,7 @@ export function joinSession(request: Request, response: Response) {
     return;
   }
 
-  response.status(200).json(result.session);
+  response.status(200).json(sessionService.toSessionMetadata(result.session));
 }
 
 export function getSession(request: Request, response: Response) {
@@ -72,6 +72,6 @@ export function getSession(request: Request, response: Response) {
     return;
   }
 
-  response.status(200).json(session);
+  response.status(200).json(sessionService.toSessionMetadata(session));
 }
 

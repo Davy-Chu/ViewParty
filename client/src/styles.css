@@ -189,6 +189,11 @@ button:hover {
   align-items: start;
 }
 
+.party-sidebar {
+  display: grid;
+  gap: 1rem;
+}
+
 .video-player {
   aspect-ratio: 16 / 9;
   display: grid;
@@ -250,8 +255,60 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
-.creator-crown {
+.host-crown {
   margin-right: 0.35rem;
+}
+
+.chat-panel {
+  padding: 1rem;
+  border: 1px solid #dfe4ee;
+  border-radius: 0.75rem;
+}
+
+.chat-panel h2 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.system-messages {
+  min-height: 8rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0.75rem;
+  border-radius: 0.55rem;
+  background: #f4f6fb;
+}
+
+.system-messages p {
+  margin-bottom: 0.65rem;
+  color: #4a556d;
+  font-size: 0.9rem;
+}
+
+.system-messages p:last-child {
+  margin-bottom: 0;
+}
+
+.system-messages .chat-empty {
+  color: #7b8496;
+}
+
+.chat-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.chat-controls input {
+  min-width: 0;
+  padding: 0.65rem;
+  background: #f4f6fb;
+}
+
+.chat-controls button {
+  margin-top: 0;
+  padding: 0.65rem 0.75rem;
 }
 
 .join-code-input {

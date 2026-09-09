@@ -18,6 +18,10 @@ function CreatePage() {
 
     try {
       const session = await createSession(username, name, videoUrl);
+      sessionStorage.setItem(
+        `viewparty:${session.id}:username`,
+        username.trim(),
+      );
       navigate(`/watch/${session.id}`);
     } catch (caughtError) {
       setError(

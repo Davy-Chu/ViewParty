@@ -26,30 +26,35 @@ The intended MVP includes:
 - Synchronize play, pause, and seek events between participants.
 - Synchronize users who join after playback has already started.
 
-Participant disconnect/removal behavior is not yet part of the committed MVP design. Do not invent it without an explicit milestone.
+Participant membership reflects active Socket.IO connections. Disconnecting removes a participant, and the oldest remaining participant becomes host when the current host leaves.
 
 ## Current Implementation
 
-The repository currently has the first functional single-user milestone:
+The repository currently supports real-time party presence:
 
 - React + TypeScript frontend using Vite.
 - Node.js + TypeScript + Express backend.
 - npm workspaces for `client` and `server`.
-- `/create` creates a session through `POST /api/sessions`.
+- `/create` creates a session and `/join` performs join preflight through HTTP.
 - Sessions are stored in an in-memory `Map` on the backend.
 - Sessions use `crypto.randomUUID()` as their internal ID.
 - `/watch/:sessionId` loads a session through `GET /api/sessions/:sessionId`.
 - The watch page renders the stored YouTube URL with ReactPlayer.
-- Playback is currently local to one browser; there is no synchronization yet.
+- Socket.IO provides active presence, participant updates, host transfer, and transient system messages.
+- Playback remains local to each browser; there is no video synchronization yet.
 
 The current `Session` shape is:
 
 ```ts
 interface Session {
   id: string;
+  joinCode: string;
   name: string;
   videoUrl: string;
   createdAt: number;
+  creatorUsername: string;
+  hostUsername: string | null;
+  participants: Participant[];
 }
 ```
 
@@ -72,18 +77,13 @@ Use React + TypeScript and React Router.
 
 Keep HTTP communication in the frontend `services` layer rather than spreading `fetch` calls throughout page components.
 
-Current important pages:
-
-```text
-/create
-/watch/:sessionId
-```
-
-Planned near-term pages:
+Current pages:
 
 ```text
 /
+/create
 /join
+/watch/:sessionId
 ```
 
 ReactPlayer is the current YouTube integration. Keep it unless a future synchronization requirement demonstrates that its API is insufficient. Do not replace it with the raw YouTube IFrame API merely because the lower-level API exists.
@@ -101,6 +101,7 @@ Responsibilities:
 - **Routes:** map HTTP endpoints to controllers.
 - **Controllers:** parse/validate HTTP input and produce HTTP responses.
 - **Services:** own session business logic and state changes.
+- **Socket handlers:** translate Socket.IO events into service calls and room broadcasts.
 
 Do not introduce repository/database abstractions while the application has no database.
 
@@ -142,24 +143,28 @@ The UUID should remain in the watch URL. A UUID is difficult to guess but is **n
 
 ## Participant Model
 
-The planned participant representation is intentionally small:
+Active server-side participants are intentionally small:
 
 ```ts
 interface Participant {
   username: string;
-  isCreator: boolean;
+  socketId: string;
 }
 ```
 
-The creator is inserted first and counts toward the maximum room capacity of 5.
+Socket IDs stay on the server. Clients receive a public participant view containing only `username` and a derived `isHost` value.
 
-For the join milestone before WebSockets, participant membership may be stored permanently for the lifetime of the in-memory session. Closing a tab does not need to remove a participant until a later milestone explicitly adds presence/disconnect behavior.
+The creator is the initial host but only becomes an active participant after entering the watch page over Socket.IO. Active participants preserve connection order and count toward the maximum room capacity of 5. When the host disconnects, the first remaining participant becomes host; an empty party has no host, and its next admitted participant becomes host.
+
+## Presence and Temporary Identity
+
+Socket.IO is the selected real-time transport and uses the session UUID as its room identifier. HTTP joining only validates that a join attempt currently appears valid; it does not mutate active membership. Socket.IO admission repeats the session, capacity, and case-insensitive username checks and is authoritative, preventing HTTP preflight races from exceeding capacity or duplicating an active username.
+
+The browser stores a party username under `viewparty:<sessionId>:username` in `sessionStorage`. This provides temporary identity scoped to a browser tab and survives ordinary refreshes, but it is not authentication. Disconnects immediately remove active presence, transfer host status when necessary, and emit transient system messages. No presence or message history is persisted. Redis remains unnecessary because one backend process owns all sessions and Socket.IO connections.
 
 ## Real-Time Synchronization
 
-WebSockets should be introduced only when synchronization work begins.
-
-The exact WebSocket library is intentionally not fixed yet. Choose native WebSockets or a suitable higher-level library when implementing that milestone, and document the reason.
+Socket.IO now provides rooms and server-authoritative presence. The same connection may support playback events in a later milestone, but no playback events or state are implemented yet.
 
 The intended model is server-authoritative playback state:
 
@@ -225,11 +230,12 @@ Docker can become useful later if the project gains external infrastructure such
 
 1. **Project skeleton** — frontend/backend structure and health endpoint.
 2. **Session creation + local playback** — implemented in the current repository.
-3. **Joining + participant membership** — home page, join codes, usernames, participant limit/list.
-4. **Basic real-time synchronization** — play, pause, and seek across clients.
-5. **Late join + authoritative playback state**.
-6. **Reliability work** — conflicting commands, reconnects, drift correction, fault injection/testing.
-7. **Optional distributed-systems extension** — multiple backend instances and Redis only if deliberately exploring horizontal scaling.
+3. **Joining + participant membership** — home page, join codes, usernames, and participant limits.
+4. **Real-time presence** — active membership, host transfer, and system messages, implemented in the current repository.
+5. **Basic real-time synchronization** — play, pause, and seek across clients.
+6. **Late join + authoritative playback state**.
+7. **Reliability work** — conflicting commands, reconnects, drift correction, fault injection/testing.
+8. **Optional distributed-systems extension** — multiple backend instances and Redis only if deliberately exploring horizontal scaling.
 
 ## Non-Goals
 

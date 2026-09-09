@@ -1,8 +1,8 @@
 export const MAX_PARTICIPANTS = 5;
 
-export interface Participant {
+export interface ParticipantView {
   username: string;
-  isCreator: boolean;
+  isHost: boolean;
 }
 
 export interface Session {
@@ -11,5 +11,20 @@ export interface Session {
   name: string;
   videoUrl: string;
   createdAt: number;
-  participants: Participant[];
 }
+
+export interface SystemMessage {
+  type: "join" | "leave";
+  username: string;
+  message: string;
+}
+
+export type AdmissionError =
+  | "session_not_found"
+  | "party_full"
+  | "username_taken"
+  | "invalid_identity";
+
+export type EnterSessionResponse =
+  | { ok: true }
+  | { ok: false; error: AdmissionError };
