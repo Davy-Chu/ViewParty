@@ -341,7 +341,15 @@ function WatchPage() {
                       {"\uD83D\uDC51"}
                     </span>
                   )}
-                  {participant.username}
+                  <span
+                    className={
+                      participant.username.toLowerCase() === username.toLowerCase()
+                        ? "current-user-name"
+                        : undefined
+                    }
+                  >
+                    {participant.username}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -360,7 +368,16 @@ function WatchPage() {
                     </p>
                   ) : (
                     <p className="chat-message" key={`chat-${index}`}>
-                      <strong>{message.username}:</strong> {message.message}
+                      <strong
+                        className={
+                          message.username.toLowerCase() === username.toLowerCase()
+                            ? "current-user-name"
+                            : undefined
+                        }
+                      >
+                        {message.username}:
+                      </strong>{" "}
+                      {message.message}
                     </p>
                   ),
                 )

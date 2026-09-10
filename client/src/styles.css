@@ -302,6 +302,11 @@ button:disabled {
   color: #172033;
 }
 
+.current-user-name,
+.room-messages .chat-message strong.current-user-name {
+  color: #2563eb;
+}
+
 .chat-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
