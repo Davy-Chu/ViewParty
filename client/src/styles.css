@@ -170,7 +170,7 @@ button:hover {
 }
 
 .room {
-  width: min(100%, 72rem);
+  width: min(100%, 78rem);
 }
 
 .party-code {
@@ -184,7 +184,7 @@ button:hover {
 
 .watch-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 13rem;
+  grid-template-columns: minmax(0, 1fr) 18rem;
   gap: 1.5rem;
   align-items: start;
 }
