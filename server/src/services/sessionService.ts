@@ -2,6 +2,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import type {
   ChatMessage,
   ParticipantView,
+  PlaybackStateView,
   Session,
   SessionMetadata,
 } from "../models/Session.js";
@@ -31,6 +32,12 @@ export interface RemovalResult {
   session: Session;
   username: string;
   participants: ParticipantView[];
+}
+
+export interface PlaybackCommandResult {
+  action: "play" | "pause";
+  username: string;
+  playback: PlaybackStateView;
 }
 
 function createJoinCode(): string {
@@ -91,6 +98,11 @@ export function createSession(
     creatorUsername: username,
     hostUsername: username,
     participants: [],
+    playback: {
+      isPlaying: false,
+      position: 0,
+      updatedAt: Date.now(),
+    },
   };
 
   sessions.set(session.id, session);
@@ -217,5 +229,57 @@ export function createChatMessage(
   return {
     username: participant.username,
     message: trimmedMessage,
+  };
+}
+
+export function getPlaybackSnapshot(
+  session: Session,
+  now = Date.now(),
+): PlaybackStateView {
+  const elapsedSeconds = Math.max(0, now - session.playback.updatedAt) / 1000;
+
+  return {
+    isPlaying: session.playback.isPlaying,
+    position: session.playback.isPlaying
+      ? session.playback.position + elapsedSeconds
+      : session.playback.position,
+  };
+}
+
+export function applyPlaybackCommand(
+  sessionId: string,
+  socketId: string,
+  command: unknown,
+): PlaybackCommandResult | undefined {
+  const session = sessions.get(sessionId);
+  const participant = session?.participants.find(
+    (candidate) => candidate.socketId === socketId,
+  );
+
+  if (!session || !participant || !command || typeof command !== "object") {
+    return undefined;
+  }
+
+  const { action, position } = command as Record<string, unknown>;
+
+  if (
+    (action !== "play" && action !== "pause") ||
+    typeof position !== "number" ||
+    !Number.isFinite(position) ||
+    position < 0
+  ) {
+    return undefined;
+  }
+
+  session.playback = {
+    isPlaying: action === "play",
+    position,
+    updatedAt: Date.now(),
+  };
+
+  return {
+    action,
+    username: participant.username,
+    playback: getPlaybackSnapshot(session),
   };
 }

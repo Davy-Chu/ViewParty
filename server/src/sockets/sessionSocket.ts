@@ -1,10 +1,14 @@
 import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
-import type { ChatMessage, ParticipantView } from "../models/Session.js";
+import type {
+  ChatMessage,
+  ParticipantView,
+  PlaybackStateView,
+} from "../models/Session.js";
 import * as sessionService from "../services/sessionService.js";
 
 interface SystemMessage {
-  type: "join" | "leave";
+  type: "join" | "leave" | "play" | "pause";
   username: string;
   message: string;
 }
@@ -16,11 +20,13 @@ type EnterSessionResponse =
 interface ServerToClientEvents {
   "chat:message": (message: ChatMessage) => void;
   "participants:updated": (participants: ParticipantView[]) => void;
+  "playback:state": (playback: PlaybackStateView) => void;
   "system:message": (message: SystemMessage) => void;
 }
 
 interface ClientToServerEvents {
   "chat:send": (payload: unknown) => void;
+  "playback:command": (payload: unknown) => void;
   "session:enter": (
     payload: unknown,
     acknowledge: (response: EnterSessionResponse) => void,
@@ -86,6 +92,10 @@ export function configureSessionSocket(httpServer: HttpServer) {
       acknowledge({ ok: true });
 
       io.to(result.session.id).emit("participants:updated", result.participants);
+      socket.emit(
+        "playback:state",
+        sessionService.getPlaybackSnapshot(result.session),
+      );
       io.to(result.session.id).emit("system:message", {
         type: "join",
         username,
@@ -111,6 +121,34 @@ export function configureSessionSocket(httpServer: HttpServer) {
       }
 
       io.to(sessionId).emit("chat:message", message);
+    });
+
+    socket.on("playback:command", (payload) => {
+      const { sessionId } = socket.data;
+
+      if (!sessionId) {
+        return;
+      }
+
+      const result = sessionService.applyPlaybackCommand(
+        sessionId,
+        socket.id,
+        payload,
+      );
+
+      if (!result) {
+        return;
+      }
+
+      io.to(sessionId).emit("playback:state", result.playback);
+      io.to(sessionId).emit("system:message", {
+        type: result.action,
+        username: result.username,
+        message:
+          result.action === "play"
+            ? `${result.username} has started the video.`
+            : `${result.username} has paused the video.`,
+      });
     });
 
     socket.on("disconnect", () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, SyntheticEvent } from "react";
 import ReactPlayer from "react-player";
 import { Link, useParams } from "react-router-dom";
 import { getSession } from "../services/sessionApi";
@@ -9,10 +9,14 @@ import type {
   AdmissionError,
   ChatMessage,
   ParticipantView,
+  PlaybackCommand,
+  PlaybackStateView,
   RoomMessage,
   Session,
   SystemMessage,
 } from "../types/Session";
+
+const PLAYBACK_SEEK_TOLERANCE_SECONDS = 0.5;
 
 const admissionErrorMessages: Record<AdmissionError, string> = {
   session_not_found: "Session not found.",
@@ -31,10 +35,73 @@ function WatchPage() {
   const [roomMessages, setRoomMessages] = useState<RoomMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isAdmitted, setIsAdmitted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [presenceError, setPresenceError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<HTMLVideoElement>(null);
+  const latestPositionRef = useRef(0);
+  const latestPlaybackStateRef = useRef<PlaybackStateView | null>(null);
+  const suppressNextPlaybackEvent = useRef<PlaybackCommand["action"] | null>(null);
+
+  function applyPlaybackState(playback: PlaybackStateView) {
+    latestPlaybackStateRef.current = playback;
+    latestPositionRef.current = playback.position;
+
+    const player = playerRef.current;
+
+    if (player) {
+      if (
+        !Number.isFinite(player.currentTime) ||
+        Math.abs(player.currentTime - playback.position) >
+          PLAYBACK_SEEK_TOLERANCE_SECONDS
+      ) {
+        try {
+          player.currentTime = playback.position;
+        } catch {
+          // The media may not be seekable until onReady retries this snapshot.
+        }
+      }
+
+      const requiredAction = playback.isPlaying ? "play" : "pause";
+      const requiresTransition = playback.isPlaying ? player.paused : !player.paused;
+      suppressNextPlaybackEvent.current = requiresTransition ? requiredAction : null;
+    } else {
+      suppressNextPlaybackEvent.current = playback.isPlaying ? "play" : null;
+    }
+
+    setIsPlaying(playback.isPlaying);
+  }
+
+  function handlePlaybackEvent(
+    action: PlaybackCommand["action"],
+    event: SyntheticEvent<HTMLVideoElement>,
+  ) {
+    if (Number.isFinite(event.currentTarget.currentTime)) {
+      latestPositionRef.current = event.currentTarget.currentTime;
+    }
+
+    if (suppressNextPlaybackEvent.current === action) {
+      suppressNextPlaybackEvent.current = null;
+      return;
+    }
+
+    if (!isAdmitted || !sessionSocket.connected) {
+      return;
+    }
+
+    sessionSocket.emit("playback:command", {
+      action,
+      position: latestPositionRef.current,
+    });
+  }
+
+  function handlePlayerReady() {
+    if (latestPlaybackStateRef.current) {
+      applyPlaybackState(latestPlaybackStateRef.current);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -80,7 +147,11 @@ function WatchPage() {
     setRoomMessages([]);
     setChatInput("");
     setIsAdmitted(false);
+    setIsPlaying(false);
     setPresenceError("");
+    latestPositionRef.current = 0;
+    latestPlaybackStateRef.current = null;
+    suppressNextPlaybackEvent.current = null;
 
     function enterSession() {
       sessionSocket.emit(
@@ -122,6 +193,10 @@ function WatchPage() {
       ]);
     }
 
+    function handlePlaybackState(playback: PlaybackStateView) {
+      applyPlaybackState(playback);
+    }
+
     function handleConnectionError() {
       setIsAdmitted(false);
       setPresenceError("Unable to connect to the party.");
@@ -135,6 +210,7 @@ function WatchPage() {
     sessionSocket.on("connect", enterSession);
     sessionSocket.on("disconnect", handleDisconnect);
     sessionSocket.on("participants:updated", handleParticipantsUpdated);
+    sessionSocket.on("playback:state", handlePlaybackState);
     sessionSocket.on("system:message", handleSystemMessage);
     sessionSocket.on("connect_error", handleConnectionError);
 
@@ -150,6 +226,7 @@ function WatchPage() {
       sessionSocket.off("connect", enterSession);
       sessionSocket.off("disconnect", handleDisconnect);
       sessionSocket.off("participants:updated", handleParticipantsUpdated);
+      sessionSocket.off("playback:state", handlePlaybackState);
       sessionSocket.off("system:message", handleSystemMessage);
       sessionSocket.off("connect_error", handleConnectionError);
       sessionSocket.disconnect();
@@ -224,7 +301,22 @@ function WatchPage() {
       <div className="watch-layout">
         <div className="watch-main">
           <div className="video-player">
-            <ReactPlayer src={session.videoUrl} controls width="100%" height="100%" />
+            <ReactPlayer
+              ref={playerRef}
+              src={session.videoUrl}
+              playing={isPlaying}
+              controls
+              width="100%"
+              height="100%"
+              onReady={handlePlayerReady}
+              onTimeUpdate={(event) => {
+                if (Number.isFinite(event.currentTarget.currentTime)) {
+                  latestPositionRef.current = event.currentTarget.currentTime;
+                }
+              }}
+              onPlay={(event) => handlePlaybackEvent("play", event)}
+              onPause={(event) => handlePlaybackEvent("pause", event)}
+            />
           </div>
 
           <Link className="back-button" to="/">

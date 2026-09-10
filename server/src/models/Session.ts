@@ -12,6 +12,18 @@ export interface Session {
   creatorUsername: string;
   hostUsername: string | null;
   participants: Participant[];
+  playback: PlaybackState;
+}
+
+export interface PlaybackState {
+  isPlaying: boolean;
+  position: number;
+  updatedAt: number;
+}
+
+export interface PlaybackStateView {
+  isPlaying: boolean;
+  position: number;
 }
 
 export interface SessionMetadata {

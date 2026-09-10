@@ -30,7 +30,7 @@ Participant membership reflects active Socket.IO connections. Disconnecting remo
 
 ## Current Implementation
 
-The repository currently supports real-time party presence:
+The repository currently supports real-time party presence, chat, and basic playback synchronization:
 
 - React + TypeScript frontend using Vite.
 - Node.js + TypeScript + Express backend.
@@ -40,8 +40,9 @@ The repository currently supports real-time party presence:
 - Sessions use `crypto.randomUUID()` as their internal ID.
 - `/watch/:sessionId` loads a session through `GET /api/sessions/:sessionId`.
 - The watch page renders the stored YouTube URL with ReactPlayer.
-- Socket.IO provides active presence, participant updates, host transfer, transient system messages, and ephemeral room chat.
-- Playback remains local to each browser; there is no video synchronization yet.
+- Socket.IO provides active presence, participant updates, host transfer, transient system messages, ephemeral room chat, and synchronized play/pause commands.
+- The server owns authoritative playback state and sends a freshly derived position to late joiners.
+- Manual seek synchronization, periodic drift correction, and command versioning are not implemented yet.
 
 The current `Session` shape is:
 
@@ -55,6 +56,11 @@ interface Session {
   creatorUsername: string;
   hostUsername: string | null;
   participants: Participant[];
+  playback: {
+    isPlaying: boolean;
+    position: number;
+    updatedAt: number;
+  };
 }
 ```
 
@@ -168,9 +174,7 @@ Room chat reuses the admitted Socket.IO connection and UUID-based room. Clients 
 
 ## Real-Time Synchronization
 
-Socket.IO now provides rooms and server-authoritative presence. The same connection may support playback events in a later milestone, but no playback events or state are implemented yet.
-
-The intended model is server-authoritative playback state:
+Socket.IO rooms provide server-authoritative play and pause synchronization over the same admitted connection used for presence and chat:
 
 ```text
 Client action
@@ -180,7 +184,7 @@ Client action
     -> clients converge on that state
 ```
 
-The server will eventually need enough playback state to reconstruct the current position for a late joiner. A likely conceptual state is:
+Each session stores:
 
 ```text
 playing/paused
@@ -188,9 +192,11 @@ position at last update
 server timestamp of last update
 ```
 
-Do not continuously store the playback position every millisecond. When playing, current position can be derived from the last known position plus elapsed time.
+The server does not continuously update the stored position. When playback is active, it derives a current snapshot from the stored position plus elapsed server time. This lets a newly admitted socket receive a fresh playback state immediately.
 
-The exact event ordering/versioning strategy should be chosen during the synchronization milestone rather than pre-built now.
+An admitted client sends a `playback:command` containing only an action and its current player position. The server verifies the socket's active membership, validates the command, records it with a server timestamp, then broadcasts `playback:state` to the entire room including the sender. Each accepted command also produces exactly one transient play or pause system message. Commands are handled in server arrival order, so the last processed command wins.
+
+Clients apply the authoritative snapshot to ReactPlayer and suppress the resulting programmatic play or pause callback when a real local transition is required. Manual seeking is intentionally local for now. Command acknowledgements, periodic drift correction, sequence numbers, reconnection recovery beyond normal room admission, and multi-server ordering are deferred until a concrete reliability milestone requires them.
 
 ## Reliability and Concurrency Goals
 
@@ -236,9 +242,9 @@ Docker can become useful later if the project gains external infrastructure such
 2. **Session creation + local playback** — implemented in the current repository.
 3. **Joining + participant membership** — home page, join codes, usernames, and participant limits.
 4. **Real-time presence** — active membership, host transfer, and system messages, implemented in the current repository.
-5. **Basic real-time synchronization** — play, pause, and seek across clients.
-6. **Late join + authoritative playback state**.
-7. **Reliability work** — conflicting commands, reconnects, drift correction, fault injection/testing.
+5. **Room chat** — ephemeral user messages over the admitted room connection.
+6. **Basic real-time synchronization** — server-authoritative play/pause and late-join state, implemented in the current repository.
+7. **Seek and reliability work** — seek synchronization, conflicting commands, reconnects, drift correction, fault injection/testing.
 8. **Optional distributed-systems extension** — multiple backend instances and Redis only if deliberately exploring horizontal scaling.
 
 ## Non-Goals

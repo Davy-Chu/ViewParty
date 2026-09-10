@@ -15,7 +15,7 @@ export interface Session {
 }
 
 export interface SystemMessage {
-  type: "join" | "leave";
+  type: "join" | "leave" | "play" | "pause";
   username: string;
   message: string;
 }
@@ -23,6 +23,16 @@ export interface SystemMessage {
 export interface ChatMessage {
   username: string;
   message: string;
+}
+
+export interface PlaybackCommand {
+  action: "play" | "pause";
+  position: number;
+}
+
+export interface PlaybackStateView {
+  isPlaying: boolean;
+  position: number;
 }
 
 export type RoomMessage =
