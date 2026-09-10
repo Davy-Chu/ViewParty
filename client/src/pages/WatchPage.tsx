@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import ReactPlayer from "react-player";
 import { Link, useParams } from "react-router-dom";
 import { getSession } from "../services/sessionApi";
 import { sessionSocket } from "../services/socket";
-import { MAX_PARTICIPANTS } from "../types/Session";
+import { MAX_CHAT_MESSAGE_LENGTH, MAX_PARTICIPANTS } from "../types/Session";
 import type {
   AdmissionError,
+  ChatMessage,
   ParticipantView,
+  RoomMessage,
   Session,
   SystemMessage,
 } from "../types/Session";
@@ -25,10 +28,13 @@ function WatchPage() {
     : undefined;
   const [session, setSession] = useState<Session | null>(null);
   const [participants, setParticipants] = useState<ParticipantView[]>([]);
-  const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([]);
+  const [roomMessages, setRoomMessages] = useState<RoomMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isAdmitted, setIsAdmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [presenceError, setPresenceError] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -71,7 +77,9 @@ function WatchPage() {
     let isActive = true;
 
     setParticipants([]);
-    setSystemMessages([]);
+    setRoomMessages([]);
+    setChatInput("");
+    setIsAdmitted(false);
     setPresenceError("");
 
     function enterSession() {
@@ -84,11 +92,13 @@ function WatchPage() {
           }
 
           if (!response.ok) {
+            setIsAdmitted(false);
             setPresenceError(admissionErrorMessages[response.error]);
             sessionSocket.disconnect();
             return;
           }
 
+          setIsAdmitted(true);
           setPresenceError("");
         },
       );
@@ -99,14 +109,31 @@ function WatchPage() {
     }
 
     function handleSystemMessage(message: SystemMessage) {
-      setSystemMessages((currentMessages) => [...currentMessages, message]);
+      setRoomMessages((currentMessages) => [
+        ...currentMessages,
+        { type: "system", message: message.message },
+      ]);
+    }
+
+    function handleChatMessage(message: ChatMessage) {
+      setRoomMessages((currentMessages) => [
+        ...currentMessages,
+        { type: "chat", username: message.username, message: message.message },
+      ]);
     }
 
     function handleConnectionError() {
+      setIsAdmitted(false);
       setPresenceError("Unable to connect to the party.");
     }
 
+    function handleDisconnect() {
+      setIsAdmitted(false);
+    }
+
+    sessionSocket.on("chat:message", handleChatMessage);
     sessionSocket.on("connect", enterSession);
+    sessionSocket.on("disconnect", handleDisconnect);
     sessionSocket.on("participants:updated", handleParticipantsUpdated);
     sessionSocket.on("system:message", handleSystemMessage);
     sessionSocket.on("connect_error", handleConnectionError);
@@ -119,13 +146,42 @@ function WatchPage() {
 
     return () => {
       isActive = false;
+      sessionSocket.off("chat:message", handleChatMessage);
       sessionSocket.off("connect", enterSession);
+      sessionSocket.off("disconnect", handleDisconnect);
       sessionSocket.off("participants:updated", handleParticipantsUpdated);
       sessionSocket.off("system:message", handleSystemMessage);
       sessionSocket.off("connect_error", handleConnectionError);
       sessionSocket.disconnect();
     };
   }, [sessionId, username]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: "nearest" });
+  }, [roomMessages]);
+
+  function handleChatSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const message = chatInput.trim();
+
+    if (
+      !isAdmitted ||
+      !sessionSocket.connected ||
+      message.length === 0 ||
+      message.length > MAX_CHAT_MESSAGE_LENGTH
+    ) {
+      return;
+    }
+
+    sessionSocket.emit("chat:send", { message });
+    setChatInput("");
+  }
+
+  const canSendChat =
+    isAdmitted &&
+    chatInput.trim().length > 0 &&
+    chatInput.length <= MAX_CHAT_MESSAGE_LENGTH;
 
   if (!sessionId || !username) {
     return (
@@ -201,24 +257,40 @@ function WatchPage() {
 
           <section className="chat-panel" aria-labelledby="chat-heading">
             <h2 id="chat-heading">Chat</h2>
-            <div className="system-messages" aria-live="polite">
-              {systemMessages.length === 0 ? (
-                <p className="chat-empty">System messages will appear here.</p>
+            <div className="room-messages" aria-live="polite">
+              {roomMessages.length === 0 ? (
+                <p className="chat-empty">Messages will appear here.</p>
               ) : (
-                systemMessages.map((message, index) => (
-                  <p key={`${message.type}-${message.username}-${index}`}>
-                    {message.message}
-                  </p>
-                ))
+                roomMessages.map((message, index) =>
+                  message.type === "system" ? (
+                    <p className="system-message" key={`system-${index}`}>
+                      {message.message}
+                    </p>
+                  ) : (
+                    <p className="chat-message" key={`chat-${index}`}>
+                      <strong>{message.username}:</strong> {message.message}
+                    </p>
+                  ),
+                )
               )}
+              <div ref={messagesEndRef} />
             </div>
 
-            <div className="chat-controls">
-              <input type="text" placeholder="Chat coming soon..." disabled />
-              <button type="button" disabled>
+            <form className="chat-controls" onSubmit={handleChatSubmit}>
+              <input
+                type="text"
+                aria-label="Chat message"
+                placeholder="Send a message..."
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+                maxLength={MAX_CHAT_MESSAGE_LENGTH}
+                autoComplete="off"
+                disabled={!isAdmitted}
+              />
+              <button type="submit" disabled={!canSendChat}>
                 Send
               </button>
-            </div>
+            </form>
           </section>
         </aside>
       </div>

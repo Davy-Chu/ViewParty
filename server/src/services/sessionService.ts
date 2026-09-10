@@ -1,11 +1,13 @@
 import { randomInt, randomUUID } from "node:crypto";
 import type {
+  ChatMessage,
   ParticipantView,
   Session,
   SessionMetadata,
 } from "../models/Session.js";
 
 export const MAX_PARTICIPANTS = 5;
+export const MAX_CHAT_MESSAGE_LENGTH = 500;
 
 const JOIN_CODE_LENGTH = 5;
 const JOIN_CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -182,5 +184,38 @@ export function removeParticipant(
     session,
     username: participant.username,
     participants: getParticipantViews(session),
+  };
+}
+
+export function createChatMessage(
+  sessionId: string,
+  socketId: string,
+  message: unknown,
+): ChatMessage | undefined {
+  if (typeof message !== "string") {
+    return undefined;
+  }
+
+  const trimmedMessage = message.trim();
+
+  if (
+    trimmedMessage.length === 0 ||
+    trimmedMessage.length > MAX_CHAT_MESSAGE_LENGTH
+  ) {
+    return undefined;
+  }
+
+  const session = sessions.get(sessionId);
+  const participant = session?.participants.find(
+    (candidate) => candidate.socketId === socketId,
+  );
+
+  if (!participant) {
+    return undefined;
+  }
+
+  return {
+    username: participant.username,
+    message: trimmedMessage,
   };
 }

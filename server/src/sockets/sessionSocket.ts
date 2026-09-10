@@ -1,6 +1,6 @@
 import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
-import type { ParticipantView } from "../models/Session.js";
+import type { ChatMessage, ParticipantView } from "../models/Session.js";
 import * as sessionService from "../services/sessionService.js";
 
 interface SystemMessage {
@@ -14,11 +14,13 @@ type EnterSessionResponse =
   | { ok: false; error: sessionService.AdmissionError };
 
 interface ServerToClientEvents {
+  "chat:message": (message: ChatMessage) => void;
   "participants:updated": (participants: ParticipantView[]) => void;
   "system:message": (message: SystemMessage) => void;
 }
 
 interface ClientToServerEvents {
+  "chat:send": (payload: unknown) => void;
   "session:enter": (
     payload: unknown,
     acknowledge: (response: EnterSessionResponse) => void,
@@ -89,6 +91,26 @@ export function configureSessionSocket(httpServer: HttpServer) {
         username,
         message: `${username} joined the party.`,
       });
+    });
+
+    socket.on("chat:send", (payload) => {
+      const { sessionId } = socket.data;
+
+      if (!sessionId || !payload || typeof payload !== "object") {
+        return;
+      }
+
+      const message = sessionService.createChatMessage(
+        sessionId,
+        socket.id,
+        (payload as Record<string, unknown>).message,
+      );
+
+      if (!message) {
+        return;
+      }
+
+      io.to(sessionId).emit("chat:message", message);
     });
 
     socket.on("disconnect", () => {

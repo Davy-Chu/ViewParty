@@ -4,9 +4,9 @@ ViewParty is a real-time synchronized media application built as a learning proj
 
 ## Current milestone
 
-**Milestone 3: real-time presence, host transfer, and system chat.**
+**Milestone 4: real-time room chat.**
 
-The application supports temporary watch parties stored in server memory. A creator chooses a username, party name, and YouTube URL. Up to four more participants can join using a unique five-character party code. Socket.IO keeps the active member list and host status current as users connect and disconnect, while the watch page displays transient join and leave messages.
+The application supports temporary watch parties stored in server memory. A creator chooses a username, party name, and YouTube URL. Up to four more participants can join using a unique five-character party code. Socket.IO keeps the active member list and host status current and delivers ephemeral room chat alongside join and leave messages.
 
 Available pages:
 
@@ -15,7 +15,7 @@ Available pages:
 - `/join` — join with a username and party code
 - `/watch/:sessionId` — view a party using its internal UUID
 
-Usernames are stored in tab-scoped `sessionStorage`. HTTP joining is preflight validation; Socket.IO admission authoritatively enforces active username uniqueness and the five-person capacity. Playback remains local to each browser and user-authored chat is intentionally disabled.
+Usernames are stored in tab-scoped `sessionStorage`. HTTP joining is preflight validation; Socket.IO admission authoritatively enforces active username uniqueness and the five-person capacity. Chat messages are validated by the server, limited to 500 characters, and never stored or replayed. Playback remains local to each browser.
 
 ## Run the project
 

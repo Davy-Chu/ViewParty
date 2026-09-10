@@ -270,7 +270,7 @@ button:disabled {
   font-size: 1rem;
 }
 
-.system-messages {
+.room-messages {
   min-height: 8rem;
   max-height: 14rem;
   overflow-y: auto;
@@ -279,18 +279,27 @@ button:disabled {
   background: #f4f6fb;
 }
 
-.system-messages p {
+.room-messages p {
   margin-bottom: 0.65rem;
   color: #4a556d;
   font-size: 0.9rem;
 }
 
-.system-messages p:last-child {
+.room-messages p:last-of-type {
   margin-bottom: 0;
 }
 
-.system-messages .chat-empty {
+.room-messages .chat-empty {
   color: #7b8496;
+}
+
+.room-messages .system-message {
+  color: #70798a;
+  font-style: italic;
+}
+
+.room-messages .chat-message strong {
+  color: #172033;
 }
 
 .chat-controls {

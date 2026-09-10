@@ -40,7 +40,7 @@ The repository currently supports real-time party presence:
 - Sessions use `crypto.randomUUID()` as their internal ID.
 - `/watch/:sessionId` loads a session through `GET /api/sessions/:sessionId`.
 - The watch page renders the stored YouTube URL with ReactPlayer.
-- Socket.IO provides active presence, participant updates, host transfer, and transient system messages.
+- Socket.IO provides active presence, participant updates, host transfer, transient system messages, and ephemeral room chat.
 - Playback remains local to each browser; there is no video synchronization yet.
 
 The current `Session` shape is:
@@ -161,6 +161,10 @@ The creator is the initial host but only becomes an active participant after ent
 Socket.IO is the selected real-time transport and uses the session UUID as its room identifier. HTTP joining only validates that a join attempt currently appears valid; it does not mutate active membership. Socket.IO admission repeats the session, capacity, and case-insensitive username checks and is authoritative, preventing HTTP preflight races from exceeding capacity or duplicating an active username.
 
 The browser stores a party username under `viewparty:<sessionId>:username` in `sessionStorage`. This provides temporary identity scoped to a browser tab and survives ordinary refreshes, but it is not authentication. Disconnects immediately remove active presence, transfer host status when necessary, and emit transient system messages. No presence or message history is persisted. Redis remains unnecessary because one backend process owns all sessions and Socket.IO connections.
+
+## Room Chat
+
+Room chat reuses the admitted Socket.IO connection and UUID-based room. Clients submit message text only; the server resolves the sender and destination from active socket presence, trims and validates the message against a 500-character maximum, and broadcasts accepted messages to the full room including the sender. Chat has no timestamps, history, replay, or persistence.
 
 ## Real-Time Synchronization
 

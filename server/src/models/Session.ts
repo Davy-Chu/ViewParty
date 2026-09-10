@@ -26,3 +26,8 @@ export interface ParticipantView {
   username: string;
   isHost: boolean;
 }
+
+export interface ChatMessage {
+  username: string;
+  message: string;
+}
